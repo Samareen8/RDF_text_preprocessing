@@ -1,0 +1,66 @@
+rm(list = ls())
+setwd('')
+Tweets <- read.csv('Tweets.csv')
+head(Tweets)
+str(Tweets)
+View(Tweets)
+
+##Installing packages
+library(quanteda)
+library(quanteda.textstats)
+library(tm)
+library(textclean)
+library(textstem)
+library(sentimentr)
+library('koRpus')
+
+sample_actions <- c(stemDocument,lemmatize_strings,tolower,removePunctuation,removeNumbers,removeSymbol,removeURL,replace_contraction,stopwordRemoval)
+
+#### Applying all the combinations to Tweets ####
+df_tweets <- c()
+for (i in 1:1000){
+  for (n in 0:9) {
+    x <- apply_combinations(Tweets$text[i],sample_actions,n)
+    df_tweets <- rbind(df_tweets,x)
+  }
+}
+rownames(df_tweets) <- c(1:512000)
+colnames(df_tweets) <- 'Tweets'
+save(df_tweets,file = 'df_tweets.Rda')
+
+#### Calculating outcomes ####
+
+## sentiment ##
+sentiment_tweets <- c()
+for (m in 1:length(df_tweets)) {
+  s <- sentiment_by(df_tweets[m])$ave_sentiment
+  sentiment_tweets <- rbind(sentiment_tweets,s)
+}
+rownames(sentiment_tweets) <- c(1:512000)
+colnames(sentiment_tweets) <- 'Sentiment'
+save(sentiment_tweets,file = 'sentiment_tweets.Rda')
+
+## readability ##
+readability_tweets <- c()
+for (m in 1:length(df_tweets)) {
+  r <- textstat_readability(df_tweets[m],measure = 'Flesch')$Flesch
+  readability_tweets <- rbind(readability_tweets,r)
+}
+rownames(readability_tweets) <- c(1:512000)
+colnames(readability_tweets) <- 'Readability'
+save(readability_tweets,file = 'readability_tweets.Rda')
+
+## lexical diversity ##
+lexicaldiversity_tweets <- c()
+for (m in 1:length(df_tweets)) {
+  Tweets_corpus <- corpus(df_tweets[m])
+  toks_inaug_tweets <- quanteda::tokens(Tweets_corpus,remove_symbols = TRUE,remove_numbers = TRUE,remove_punct = TRUE)
+  dfmat_inaug_tweets <- dfm(toks_inaug_tweets)
+  if (length(dfmat_inaug_tweets) == 0){
+    l <- 0
+  } else {
+    l <- textstat_lexdiv(dfmat_inaug_tweets)$TTR
+  }
+lexicaldiversity_tweets <- rbind(lexicaldiversity_tweets,l)
+}
+
