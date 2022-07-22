@@ -1,0 +1,116 @@
+setwd('')
+rm(list = ls())
+Youtube_1 <- read.delim(file = 'Youtube(1).txt')
+Youtube_2 <- read.delim(file = 'Youtube(2).txt')
+Youtube_3 <- read.delim(file = 'Youtube(3).txt')
+Youtube_4 <- read.delim(file = 'Youtube(4).txt')
+Youtube_5 <- read.delim(file = 'Youtube(5).txt')
+
+##Installing packages
+library(quanteda)
+library(quanteda.textstats)
+library(tm)
+library(textclean)
+library(textstem)
+library(sentimentr)
+
+#### Creating a data frame ####
+r_1 <- 2
+rows_1 <- c(2)
+while (r_1 < 821) {
+  r_1 <- r_1 + 3
+  rows_1 <- append(rows_1,r_1)
+}
+Youtube_1 <- Youtube_1[rows_1,]
+Youtube_1 <- paste(Youtube_1,collapse = " ")
+
+r_2 <- 2
+rows_2 <- c(2)
+while (r_2 < 1052) {
+  r_2 <- r_2 + 3
+  rows_2 <- append(rows_2,r_2)
+}
+Youtube_2 <- Youtube_2[rows_2,]
+Youtube_2 <- paste(Youtube_2,collapse = " ")
+
+r_3 <- 2
+rows_3 <- c(2)
+while (r_3 < 497) {
+  r_3 <- r_3 + 3
+  rows_3 <- append(rows_3,r_3)
+}
+Youtube_3 <- Youtube_3[rows_3,]
+Youtube_3 <- paste(Youtube_3,collapse = " ")
+
+r_4 <- 2
+rows_4 <- c(2)
+while (r_4 < 395) {
+  r_4 <- r_4 + 3
+  rows_4 <- append(rows_4,r_4)
+}
+Youtube_4 <- Youtube_4[rows_4,]
+Youtube_4 <- paste(Youtube_4,collapse = " ")
+
+r_5 <- 2
+rows_5 <- c(2)
+while (r_5 < 761) {
+  r_5 <- r_5 + 3
+  rows_5 <- append(rows_5,r_5)
+}
+Youtube_5 <- Youtube_5[rows_5,]
+Youtube_5 <- paste(Youtube_5,collapse = " ")
+
+youtube <- rbind(Youtube_1,Youtube_2,Youtube_3,Youtube_4,Youtube_5)
+colnames(youtube) <- 'youtube'
+
+#### Pre-processing ####
+
+sample_actions <- c(stemDocument,lemmatize_strings,tolower,removePunctuation,removeNumbers,removeSymbol,removeURL,replace_contraction,stopwordRemoval)
+
+df_youtube <- c()
+for (i in 1:length(youtube)){
+  for (n in 0:9) {
+    x <- apply_combinations(youtube[i],sample_actions,n)
+    df_youtube <- rbind(df_youtube,x)
+  }
+}
+rownames(df_youtube) <- c(1:2560)
+colnames(df_youtube) <- 'youtube'
+save(df_youtube,file = 'df_youtube.Rda')
+
+#### Calculating outcomes ####
+
+## sentiment ##
+sentiment_youtube <- c()
+for (m in 1:length(df_youtube)) {
+  s <- sentiment_by(df_youtube[m])$ave_sentiment
+  sentiment_youtube <- rbind(sentiment_youtube,s)
+}
+rownames(sentiment_youtube) <- c(1:2560)
+colnames(sentiment_youtube) <- 'Sentiment'
+save(sentiment_youtube,file = 'sentiment_youtube.Rda')
+
+## readability ##
+readability_youtube <- c()
+for (m in 1:length(df_youtube)) {
+  r <- textstat_readability(df_youtube[m],measure = 'Flesch')$Flesch
+  readability_youtube <- rbind(readability_youtube,r)
+}
+rownames(readability_youtube) <- c(1:2560)
+colnames(readability_youtube) <- 'Readability'
+save(readability_youtube,file = 'readability_youtube.Rda')
+
+## lexical diversity ##
+lexicaldiversity_youtube <- c()
+for (m in 1:length(df_youtube)) {
+  Youtube_corpus <- corpus(df_youtube[m])
+  toks_inaug_youtube <- quanteda::tokens(Youtube_corpus)
+  dfmat_inaug_youtube <- dfm(toks_inaug_youtube)
+  l <- textstat_lexdiv(dfmat_inaug_youtube)$TTR
+  lexicaldiversity_youtube <- rbind(lexicaldiversity_youtube,l)
+}
+rownames(lexicaldiversity_youtube) <- c(1:2560)
+colnames(lexicaldiversity_youtube) <- 'Lexical Diversity'
+save(lexicaldiversity_youtube,file = 'lexicaldiversity_youtube.Rda')
+
+View(cbind(df_categories_youtube,sentiment_youtube,readability_youtube))
