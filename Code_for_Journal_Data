@@ -1,0 +1,190 @@
+setwd('')
+rm(list = ls())
+Articles <- read.csv('')
+
+#### Installing packages ####
+library(quanteda)
+library(quanteda.textstats)
+library(tm)
+library(textclean)
+library(textstem)
+library(sentimentr)
+library(dplyr)
+
+#### Combinations ####
+sample_actions <- c(stemDocument,lemmatize_strings,tolower,removePunctuation,removeNumbers,removeSymbol,removeURL,replace_contraction,stopwordRemoval)
+
+df_articles <- c()
+for (i in 1:1000){
+  for (n in 0:9) {
+    x <- apply_combinations(Articles$text[i],sample_actions,n)
+    df_articles <- rbind(df_articles,x)
+  }
+}
+rownames(df_articles) <- c(1:512000)
+colnames(df_articles) <- 'Articles'
+
+#### Calculating outcomes ####
+## measuring sentiment ##
+sentiment_articles <- c()
+for (m in 1:length(df_articles)) {
+  s <- sentiment_by(df_articles[m])$ave_sentiment
+  sentiment_articles <- rbind(sentiment_articles,s)
+}
+rownames(sentiment_articles) <- c(1:512000)
+colnames(sentiment_articles) <- 'Sentiment'
+
+## measuring readability ##
+readability_articles <- c()
+for (m in 1:length(df_articles)) {
+  r <- textstat_readability(df_articles[m],measure = 'Flesch')$Flesch
+  readability_articles <- rbind(readability_articles,r)
+}
+dim(readability_articles)
+rownames(readability_articles) <- c(1:512000)
+colnames(readability_articles) <- 'Readability'
+
+## measuring lexical diversity ##
+lexicaldiversity_articles <- c()
+for (m in 1:length(df_articles)) {
+  Articles_corpus <- corpus(df_articles[m])
+  toks_inaug_articles <- quanteda::tokens(Articles_corpus,remove_symbols = TRUE,remove_numbers = TRUE,remove_punct = TRUE)
+  dfmat_inaug_articles <- dfm(toks_inaug_articles)
+  if (length(dfmat_inaug_articles) == 0){
+    l <- 0
+  } else {
+    l <- textstat_lexdiv(dfmat_inaug_articles)$TTR
+  }
+  lexicaldiversity_articles <- rbind(lexicaldiversity_articles,l)
+}
+rownames(lexicaldiversity_articles) <- c(1:512000)
+colnames(lexicaldiversity_articles ) <- 'Lexical Diversity'
+
+outcomes_articles <- cbind(sentiment_articles,readability_articles,lexicaldiversity_articles)
+
+#### Calculating absolute differences ####
+diff_articles_none_rows <- c(1)
+for (i in 1:999) {
+  d <- diff_articles_none_rows[i] + 512
+  diff_articles_none_rows <- append(diff_articles_none_rows,d)
+}
+
+diff_articles_none_sentiment_abs <- c()
+for (i in diff_articles_none_rows) {
+  diff <- abs(sentiment_articles[i] - sentiment_articles[i:(i+511)])
+  diff_articles_none_sentiment_abs <- append(diff_articles_none_sentiment_abs,diff)
+}
+
+diff_articles_none_readability_abs <- c()
+for (i in diff_articles_none_rows) {
+  diff <- abs(readability_articles[i] - readability_articles[i:(i+511)])
+  diff_articles_none_readability_abs <- append(diff_articles_none_readability_abs,diff)
+}
+
+diff_articles_none_lexicaldiversity_abs <- c()
+for (i in diff_articles_none_rows) {
+  diff <- abs(lexicaldiversity_articles[i] - lexicaldiversity_articles[i:(i+511)])
+  diff_articles_none_lexicaldiversity_abs <- append(diff_articles_none_lexicaldiversity_abs,diff)
+}
+
+View(diff_articles_none_sentiment_abs)
+abs_diff_articles <- cbind(diff_articles_none_sentiment_abs, diff_articles_none_readability_abs, diff_articles_none_lexicaldiversity_abs)
+abs_diff_articles <- data.frame(abs_diff_articles)
+colnames(abs_diff_articles) <- c('Sentiment_abs','Readability_abs','LexicalDiversity_abs')
+
+#### Calculating squared differences ####
+diff_squared_sentiment <- c(difference_articles$`Sentiment (no steps applied)`^2)
+diff_squared_readability <- c(difference_articles$`Readability (no steps applied)`^2)
+diff_squared_lexicaldiversity <- c(difference_articles$`Lexical Diversity (no steps applied`^2)
+
+sq_diff_articles <- cbind(diff_squared_sentiment,diff_squared_readability,diff_squared_lexicaldiversity)
+colnames(sq_diff_arrticles) <- c('Sentiment_sq','Readability_sq','LexicalDiversity_sq')
+
+#### T test (with Abs difference) ####
+install.packages('apa')
+library(apa)
+install.packages('gtsummary')
+library(gtsummary)
+install.packages('flextable')
+library(flextable)
+
+t.test(abs_diff_articles$Sentiment_abs[-diff_articles_none_rows], mu = 0)
+t_apa(t.test(abs_diff_articles$Sentiment_abs[-diff_articles_none_rows], mu = 0))
+mean(articles_final$Sentiment[-diff_articles_none_rows])
+
+t.test(abs_diff_articles$Readability_abs[-diff_articles_none_rows], mu = 0)
+t_apa(t.test(abs_diff_articles$Readability_abs[-diff_articles_none_rows], mu = 0))
+mean(articles_final$Readability[-diff_articles_none_rows],na.rm = TRUE)
+
+t.test(abs_diff_articles$LexicalDiversity_abs[-diff_articles_none_rows], mu = 0)
+t_apa(t.test(abs_diff_articles$LexicalDiversity_abs[-diff_articles_none_rows], mu = 0))
+mean(articles_final$`Lexical Diversity`[-diff_articles_none_rows])
+
+
+#### GLM (with Abs and Sq differences) ####
+mod1 <- glm(abs_diff_articles$Sentiment_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = articles_final)
+t1 <- tbl_regression(mod1)
+
+mod4 <- glm(sq_diff_articles$diff_squared_sentiment ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = articles_final)
+t4 <- tbl_regression(mod4)
+
+sentiment_glm_articles <- tbl_merge(tbls = list(t1,t4),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+sentiment_glm_articles <- as_flex_table(sentiment_glm_articles)
+font(sentiment_glm_articles,part = 'all', fontname = 'Times New Roman')
+
+mod2 <- glm(abs_diff_articles$Readability_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = articles_final)
+t2 <- tbl_regression(mod2)
+
+mod5 <- glm(sq_diff_articles$diff_squared_readability ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = articles_final)
+t5 <- tbl_regression(mod5)
+
+readability_glm_articles <- tbl_merge(tbls = list(t2,t5),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+readability_glm_articles <- as_flex_table(readability_glm_articles)
+font(readability_glm_articles,part = 'all',fontname = 'Times New Roman')
+
+mod3 <- glm(abs_diff_articles$LexicalDiversity_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = articles_final)
+t3 <- tbl_regression(mod3)
+
+mod6 <- glm(sq_diff_articles$diff_squared_lexicaldiversity ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = articles_final)
+t6 <- tbl_regression(mod6)
+
+lexicaldiversity_glm_articles <- tbl_merge(tbls = list(t3,t6),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+lexicaldiversity_glm_articles <- as_flex_table(lexicaldiversity_glm_articles)
+font(lexicaldiversity_glm_articles, part = 'all',fontname = 'Times New Roman')
+
+#### Graph (with Abs and Sq differences) ####
+
+total <- c()
+for (i in 1:nrow(articles_final)){
+  sum <- sum(articles_final[i,3:11])
+  total <- rbind(total,sum)
+}
+rownames(total) <- c(1:512000)
+total
+
+df_combinations_articles <- cbind(total, sq_diff_articles, abs_diff_articles)
+
+mean_sentiment <- c()
+for (i in 0:9) {
+  mean <- mean(df_combinations_articles$Sentiment_abs[df_combinations_articles$total == i])
+  mean_sentiment <- rbind(mean_sentiment,mean)
+}
+rownames(mean_sentiment) <- c(0:9)
+plot(c(0:9),mean_sentiment,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean abs difference in sentiment scores')
+
+mean_readability <- c()
+for (i in 0:9) {
+  mean <- mean(df_combinations_articles$diff_squared_readability[df_combinations_articles$total == i],na.rm = TRUE)
+  mean_readability <- rbind(mean_readability,mean)
+}
+rownames(mean_readability) <- c(0:9)
+plot(c(0:9),mean_readability,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean sq difference in readability scores')
+
+mean_lexicaldiversity <- c()
+for (i in 0:9) {
+  mean <- mean(df_combinations_articles$diff_squared_lexicaldiversity[df_combinations_articles$total == i])
+  mean_lexicaldiversity <- rbind(mean_lexicaldiversity,mean)
+}
+rownames(mean_lexicaldiversity) <- c(0:9)
+plot(c(0:9),mean_lexicaldiversity,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean sq difference in lexical diversity scores')
+
