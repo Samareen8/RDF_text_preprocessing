@@ -64,3 +64,139 @@ for (m in 1:length(df_tweets)) {
 lexicaldiversity_tweets <- rbind(lexicaldiversity_tweets,l)
 }
 
+#### Calculating absolute differences ####
+
+diff_tweets_none_rows <- c(1)
+for (i in 1:999) {
+  d <- diff_tweets_none_rows[i] + 512
+  diff_tweets_none_rows <- append(diff_tweets_none_rows,d)
+}
+
+diff_tweets_none_sentiment_abs <- c()
+for (i in diff_tweets_none_rows) {
+  diff <- abs(sentiment_tweets[i] - sentiment_tweets[i:(i+511)])
+  diff_tweets_none_sentiment_abs <- append(diff_tweets_none_sentiment_abs,diff)
+}
+
+diff_tweets_none_readability_abs <- c()
+for (i in diff_tweets_none_rows) {
+  diff <- abs(readability_tweets[i] - readability_tweets[i:(i+511)])
+  diff_tweets_none_readability_abs <- append(diff_tweets_none_readability_abs,diff)
+}
+
+diff_tweets_none_lexicaldiversity_abs <- c()
+for (i in diff_tweets_none_rows) {
+  diff <- abs(lexicaldiversity_tweets[i] - lexicaldiversity_tweets[i:(i+511)])
+  diff_tweets_none_lexicaldiversity_abs <- append(diff_tweets_none_lexicaldiversity_abs,diff)
+}
+
+abs_diff_tweets <- cbind(diff_tweets_none_sentiment_abs,diff_tweets_none_readability_abs,diff_tweets_none_lexicaldiversity_abs)
+abs_diff_tweets <- data.frame(abs_diff_tweets)
+colnames(abs_diff_tweets) <- c('Sentiment_abs','Readability_abs','LexicalDiversity_abs')
+
+#### Calculating squared differences ####
+
+diff_squared_sentiment <- c(difference_tweets$`Sentiment (no steps applied)`^2)
+diff_squared_readability <- c(difference_tweets$`Readability (no steps applied)`^2)
+diff_squared_lexicaldiiversity <- c(difference_tweets$`Lexical Diversity (no steps applied`^2)
+
+sq_diff_tweets <- cbind(diff_squared_sentiment,diff_squared_readability,diff_squared_lexicaldiiversity)
+colnames(sq_diff_tweets) <- c('Sentiment_sq','Readability_sq','LexicalDiversity_sq')
+
+#### Statistical Analysis ####
+
+## T test (with Abs differences) ##
+install.packages('apa')
+library(apa)
+install.packages('apaTables')
+library(apaTables)
+install.packages('rempsyc')
+library(rempsyc)
+
+t.test(abs_diff_tweets$Sentiment_abs[-diff_tweets_none_rows], mu = 0)
+t_apa(t.test(abs_diff_tweets$Sentiment_abs[-diff_tweets_none_rows], mu = 0))
+
+t.test(abs_diff_tweets$Readability_abs[-diff_tweets_none_rows], mu = 0)
+t_apa(t.test(abs_diff_tweets$Readability_abs[-diff_tweets_none_rows], mu = 0))
+
+t.test(abs_diff_tweets$LexicalDiversity_abs[-diff_tweets_none_rows], mu = 0)
+t_apa(t.test(abs_diff_tweets$LexicalDiversity_abs[-diff_tweets_none_rows], mu = 0))
+
+## GLM (with Abs and Sq differences) ##
+
+install.packages('papaja')
+library(papaja)
+install.packages('knitr')
+library(knitr)
+install.packages('gtsummary')
+library(gtsummary)
+install.packages('survival')
+library(survival)
+install.packages('flextable')
+library(flextable)
+
+mod1 <- glm(abs_diff_tweets$Sentiment_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = tweets_final)
+t1 <- mod1  %>% tbl_regression()
+
+mod4 <- glm(sq_diff_tweets$Sentiment_sq ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = tweets_final)
+t4 <- mod4  %>% tbl_regression()
+
+sentiment_glm_tweets <- tbl_merge(tbls = list(t1,t4),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+sentiment_glm_tweets <- as_flex_table(sentiment_glm_tweets)
+font(sentiment_glm_tweets,part = 'all', fontname = 'Times New Roman')
+
+mod2 <- glm(abs_diff_tweets$Readability_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = tweets_final)
+t2 <- mod2 %>% tbl_regression()
+
+mod5 <- glm(sq_diff_tweets$Readability_sq ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = tweets_final)
+t5 <- tbl_regression(mod5)
+
+readability_glm_tweets <- tbl_merge(tbls = list(t2,t5),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+readability_glm_tweets <- as_flex_table(readability_glm_tweets)
+font(readability_glm_tweets,part = 'all',fontname = 'Times New Roman')
+
+mod3 <- glm(abs_diff_tweets$LexicalDiversity_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = tweets_final)
+t3 <- tbl_regression(mod3)
+
+mod6 <- glm(sq_diff_tweets$LexicalDiversity_sq ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = tweets_final)
+t6 <- tbl_regression(mod6)
+
+lexicaldiversity_glm_tweets <- tbl_merge(tbls = list(t3,t6),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+lexicaldiversity_glm_tweets <- as_flex_table(lexicaldiversity_glm_tweets)
+font(lexicaldiversity_glm_tweets, part = 'all',fontname = 'Times New Roman')
+
+## Graph (with Abs and Sq differences) ##
+
+total <- c()
+for (i in 1:nrow(tweets_final)){
+  sum <- sum(tweets_final[i,3:11])
+  total <- rbind(total,sum)
+}
+rownames(total) <- c(1:512000)
+total
+
+df_combinations_tweets <- cbind(total, sq_diff_tweets, abs_diff_tweets)
+
+mean_sentiment <- c()
+for (i in 0:9) {
+  mean <- mean(df_combinations_tweets$Sentiment_abs[df_combinations_tweets$total == i])
+  mean_sentiment <- rbind(mean_sentiment,mean)
+}
+rownames(mean_sentiment) <- c(0:9)
+plot(c(0:9),mean_sentiment,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean abs difference in sentiment scores')
+
+mean_readability <- c()
+for (i in 0:9) {
+  mean <- mean(df_combinations_tweets$Readability_sq[df_combinations_tweets$total == i],na.rm = TRUE)
+  mean_readability <- rbind(mean_readability,mean)
+}
+rownames(mean_readability) <- c(0:9)
+plot(c(0:9),mean_readability,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean sq difference in readability scores')
+
+mean_lexicaldiversity <- c()
+for (i in 0:9) {
+  mean <- mean(df_combinations_tweets$LexicalDiversity_sq[df_combinations_tweets$total == i])
+  mean_lexicaldiversity <- rbind(mean_lexicaldiversity,mean)
+}
+rownames(mean_lexicaldiversity) <- c(0:9)
+plot(c(0:9),mean_lexicaldiversity,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean sq difference in lexical diversity scores')
