@@ -1,12 +1,21 @@
 setwd('')
 rm(list = ls())
-Youtube_1 <- read.delim(file = 'Youtube(1).txt')
-Youtube_2 <- read.delim(file = 'Youtube(2).txt')
-Youtube_3 <- read.delim(file = 'Youtube(3).txt')
-Youtube_4 <- read.delim(file = 'Youtube(4).txt')
-Youtube_5 <- read.delim(file = 'Youtube(5).txt')
 
-##Installing packages
+filelist <- list.files(path = '')
+data <- lapply(filelist, read.delim)
+paste(data)
+
+Youtube <- c()
+for (i in 1:length(data)) {
+  r <- paste(data[[i]])
+  Youtube <- rbind(Youtube,r)
+}
+
+row.names(Youtube) <- c(1:638)
+colnames(Youtube) <- 'Youtube'
+write.csv(Youtube, file = 'df_Youtube_updated.csv')
+
+## Installing packages ##
 library(quanteda)
 library(quanteda.textstats)
 library(tm)
@@ -14,103 +23,230 @@ library(textclean)
 library(textstem)
 library(sentimentr)
 
-#### Creating a data frame ####
-r_1 <- 2
-rows_1 <- c(2)
-while (r_1 < 821) {
-  r_1 <- r_1 + 3
-  rows_1 <- append(rows_1,r_1)
-}
-Youtube_1 <- Youtube_1[rows_1,]
-Youtube_1 <- paste(Youtube_1,collapse = " ")
-
-r_2 <- 2
-rows_2 <- c(2)
-while (r_2 < 1052) {
-  r_2 <- r_2 + 3
-  rows_2 <- append(rows_2,r_2)
-}
-Youtube_2 <- Youtube_2[rows_2,]
-Youtube_2 <- paste(Youtube_2,collapse = " ")
-
-r_3 <- 2
-rows_3 <- c(2)
-while (r_3 < 497) {
-  r_3 <- r_3 + 3
-  rows_3 <- append(rows_3,r_3)
-}
-Youtube_3 <- Youtube_3[rows_3,]
-Youtube_3 <- paste(Youtube_3,collapse = " ")
-
-r_4 <- 2
-rows_4 <- c(2)
-while (r_4 < 395) {
-  r_4 <- r_4 + 3
-  rows_4 <- append(rows_4,r_4)
-}
-Youtube_4 <- Youtube_4[rows_4,]
-Youtube_4 <- paste(Youtube_4,collapse = " ")
-
-r_5 <- 2
-rows_5 <- c(2)
-while (r_5 < 761) {
-  r_5 <- r_5 + 3
-  rows_5 <- append(rows_5,r_5)
-}
-Youtube_5 <- Youtube_5[rows_5,]
-Youtube_5 <- paste(Youtube_5,collapse = " ")
-
-youtube <- rbind(Youtube_1,Youtube_2,Youtube_3,Youtube_4,Youtube_5)
-colnames(youtube) <- 'youtube'
-
 #### Pre-processing ####
-
 sample_actions <- c(stemDocument,lemmatize_strings,tolower,removePunctuation,removeNumbers,removeSymbol,removeURL,replace_contraction,stopwordRemoval)
 
-df_youtube <- c()
-for (i in 1:length(youtube)){
+df_youtube_updated <-c()
+for (i in 1:638){
   for (n in 0:9) {
-    x <- apply_combinations(youtube[i],sample_actions,n)
-    df_youtube <- rbind(df_youtube,x)
+    x <- apply_combinations(df_Youtube_updated$Youtube[i],sample_actions,n)
+    df_youtube_updated <- rbind(df_youtube_updated,x)
   }
 }
-rownames(df_youtube) <- c(1:2560)
-colnames(df_youtube) <- 'youtube'
-save(df_youtube,file = 'df_youtube.Rda')
+
+rownames(df_youtube_updated) <- c(1:326656)
+colnames(df_youtube_updated) <- 'Youtube'
+dim(df_youtube_updated)
+View(df_youtube_updated)
+
+save(df_youtube_updated, file = 'df_youtube_updated.Rda')
 
 #### Calculating outcomes ####
 
 ## sentiment ##
-sentiment_youtube <- c()
-for (m in 1:length(df_youtube)) {
-  s <- sentiment_by(df_youtube[m])$ave_sentiment
-  sentiment_youtube <- rbind(sentiment_youtube,s)
+sentiment_youtube_updated <- c()
+for (m in 1:length(df_youtube_updated)) {
+  s <- sentiment_by(df_youtube_updated[m])$ave_sentiment
+  sentiment_youtube_updated <- rbind(sentiment_youtube_updated,s)
 }
-rownames(sentiment_youtube) <- c(1:2560)
-colnames(sentiment_youtube) <- 'Sentiment'
-save(sentiment_youtube,file = 'sentiment_youtube.Rda')
+sentiment_youtube_updated
+rownames(sentiment_youtube_updated) <- c(1:326656)
+colnames(sentiment_youtube_updated) <- 'Sentiment'
+save(sentiment_youtube_updated,file = 'sentiment_youtube_updated.Rda')
 
 ## readability ##
-readability_youtube <- c()
-for (m in 1:length(df_youtube)) {
-  r <- textstat_readability(df_youtube[m],measure = 'Flesch')$Flesch
-  readability_youtube <- rbind(readability_youtube,r)
+readability_youtube_updated <- c()
+for (m in 1:length(df_youtube_updated)) {
+  r <- textstat_readability(df_youtube_updated[m],measure = 'Flesch')$Flesch
+  readability_youtube_updated <- rbind(readability_youtube_updated,r)
 }
-rownames(readability_youtube) <- c(1:2560)
-colnames(readability_youtube) <- 'Readability'
-save(readability_youtube,file = 'readability_youtube.Rda')
+rownames(readability_youtube_updated) <- c(1:326656)
+colnames(readability_youtube_updated) <- 'Readability'
+View(readability_youtube_updated)
+save(readability_youtube_updated,file = 'readability_youtube_updated.Rda')
 
 ## lexical diversity ##
-lexicaldiversity_youtube <- c()
-for (m in 1:length(df_youtube)) {
-  Youtube_corpus <- corpus(df_youtube[m])
-  toks_inaug_youtube <- quanteda::tokens(Youtube_corpus)
+library(koRpus)
+lexicaldiversity_youtube_updated <- c()
+for (m in 1:length(df_youtube_updated)) {
+  Youtube_corpus <- corpus(df_youtube_updated[m])
+  toks_inaug_youtube <- quanteda::tokens(Youtube_corpus,remove_symbols = TRUE,remove_numbers = TRUE,remove_punct = TRUE)
   dfmat_inaug_youtube <- dfm(toks_inaug_youtube)
-  l <- textstat_lexdiv(dfmat_inaug_youtube)$TTR
-  lexicaldiversity_youtube <- rbind(lexicaldiversity_youtube,l)
+  if (length(dfmat_inaug_youtube) == 0){
+    l <- 0
+  } else {
+    l <- textstat_lexdiv(dfmat_inaug_youtube)$TTR
+  }
+  lexicaldiversity_youtube_updated <- rbind(lexicaldiversity_youtube_updated,l)
 }
-rownames(lexicaldiversity_youtube) <- c(1:2560)
-colnames(lexicaldiversity_youtube) <- 'Lexical Diversity'
-save(lexicaldiversity_youtube,file = 'lexicaldiversity_youtube.Rda')
+lexicaldiversity_youtube_updated
+rownames(lexicaldiversity_youtube_updated) <- c(1:326656)
+colnames(lexicaldiversity_youtube_updated) <- 'Lexical Diversity'
+save(lexicaldiversity_youtube_updated,file = 'lexicaldiversity_youtube_updated.Rda')
 
-View(cbind(df_categories_youtube,sentiment_youtube,readability_youtube))
+## Calculating absolute differences ##
+diff_youtube_none_rows <- c(1)
+for (i in 1:637) {
+  d <- diff_youtube_none_rows[i] + 512
+  diff_youtube_none_rows <- append(diff_youtube_none_rows,d)
+}
+
+diff_youtube_none_sentiment_abs <- c()
+for (i in diff_youtube_none_rows) {
+  diff <- abs(sentiment_youtube_updated[i] - sentiment_youtube_updated[i:(i+511)])
+  diff_youtube_none_sentiment_abs <- append(diff_youtube_none_sentiment_abs,diff)
+}
+
+diff_youtube_none_readability_abs <- c()
+for (i in diff_youtube_none_rows) {
+  diff <- abs(readability_youtube_updated[i] - readability_youtube_updated[i:(i+511)])
+  diff_youtube_none_readability_abs <- append(diff_youtube_none_readability_abs,diff)
+}
+
+diff_youtube_none_lexicaldiversity_abs <- c()
+for (i in diff_youtube_none_rows) {
+  diff <- abs(lexicaldiversity_youtube_updated[i] - lexicaldiversity_youtube_updated[i:(i+511)])
+  diff_youtube_none_lexicaldiversity_abs <- append(diff_youtube_none_lexicaldiversity_abs,diff)
+}
+
+abs_diff_youtube_updated <- cbind(diff_youtube_none_sentiment_abs,diff_youtube_none_readability_abs,diff_youtube_none_lexicaldiversity_abs)
+abs_diff_youtube_updated <- data.frame(abs_diff_youtube_updated)
+colnames(abs_diff_youtube_updated) <- c('Sentiment_abs','Readability_abs','LexicalDiversity_abs')
+
+## Calculating squaring differences ##
+diff_squared_sentiment <- c(diff_youtube_none_sentiment_abs^2)
+diff_squared_readability <- c(diff_youtube_none_readability_abs^2)
+diff_squared_lexicaldiiversity <- c(diff_youtube_none_lexicaldiversity_abs^2)
+
+sq_diff_youtube_updated <- cbind(diff_squared_sentiment,diff_squared_readability,diff_squared_lexicaldiiversity)
+colnames(sq_diff_youtube_updated) <- c('Sentiment_sq','Readability_sq','LexicalDiversity_sq')
+
+#### Statistical Analysis ####
+
+#### T test (for Abs differences) ####
+install.packages('apa')
+library(apa)
+
+t.test(diff_youtube_none_sentiment_abs[-diff_youtube_none_rows], mu = 0)
+t_apa(t.test(diff_youtube_none_sentiment_abs[-diff_youtube_none_rows], mu = 0))
+mean(sentiment_youtube_updated[-diff_youtube_none_rows])
+mean(sentiment_youtube_updated[diff_youtube_none_rows])
+
+t.test(diff_youtube_none_readability_abs[-diff_youtube_none_rows], mu = 0)
+t_apa(t.test(diff_youtube_none_readability_abs[-diff_youtube_none_rows], mu = 0))
+mean(readability_youtube_updated[-diff_youtube_none_rows],na.rm = TRUE)
+mean(readability_youtube_updated[diff_youtube_none_rows],na.rm = TRUE)
+
+t.test(diff_youtube_none_lexicaldiversity_abs[-diff_youtube_none_rows], mu = 0)
+t_apa(t.test(diff_youtube_none_lexicaldiversity_abs[-diff_youtube_none_rows], mu = 0))
+mean(lexicaldiversity_youtube_updated[-diff_youtube_none_rows])
+mean(lexicaldiversity_youtube_updated[diff_youtube_none_rows])
+
+#### GLM (for Abs differences and Sq differences) ####
+
+install.packages('papaja')
+library(papaja)
+install.packages('knitr')
+library(knitr)
+install.packages('gtsummary')
+library(gtsummary)
+install.packages('survival')
+library(survival)
+
+youtube_updated_final <- cbind(df_youtube_updated,df_categories_youtube_updated,sentiment_youtube_updated,readability_youtube_updated,lexicaldiversity_youtube_updated,abs_diff_youtube_updated,sq_diff_youtube_updated)
+
+library(flextable)
+
+mod1 <- glm(Sentiment_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = youtube_updated_final)
+t1 <- tbl_regression(mod1)
+
+mod4 <- glm(Sentiment_sq ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = youtube_updated_final)
+t4 <- tbl_regression(mod4)
+
+sentiment_glm_youtube <- tbl_merge(tbls = list(t1,t4),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+sentiment_glm_youtube <- as_flex_table(sentiment_glm_youtube)
+font(sentiment_glm_youtube,part = 'all', fontname = 'Times New Roman')
+
+mod2 <- glm(Readability_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = youtube_updated_final)
+t2 <- tbl_regression(mod2)
+
+mod5 <- glm(Readability_sq ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = youtube_updated_final)
+t5 <- tbl_regression(mod5)
+
+readability_glm_youtube <- tbl_merge(tbls = list(t2,t5),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+readability_glm_youtube <- as_flex_table(readability_glm_youtube)
+font(readability_glm_youtube,part = 'all',fontname = 'Times New Roman')
+
+mod3 <- glm(LexicalDiversity_abs ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = youtube_updated_final)
+t3 <- tbl_regression(mod3)
+
+mod6 <- glm(LexicalDiversity_sq ~ stemDocument + lemmatize_strings + tolower + removePunctuation + removeNumbers + removeSymbol + removeURL + replace_contraction + stopwordRemoval, data = youtube_updated_final)
+t6 <- tbl_regression(mod6)
+
+lexicaldiversity_glm_youtube <- tbl_merge(tbls = list(t3,t6),tab_spanner = c('**Absolute Difference**','**Squared Difference**'))
+lexicaldiversity_glm_youtube <- as_flex_table(lexicaldiversity_glm_youtube)
+font(lexicaldiversity_glm_youtube, part = 'all',fontname = 'Times New Roman')
+
+#### Graph ####
+
+total <- c()
+for (i in 1:nrow(youtube_updated_final)){
+  sum <- sum(youtube_updated_final[i,3:11])
+  total <- rbind(total,sum)
+}
+rownames(total) <- c(1:326656)
+total
+
+youtube_updated_final <- cbind(youtube_updated_final,total)
+
+## Abs diff ##
+
+mean_sentiment <- c()
+for (i in 0:9) {
+  mean <- mean(youtube_updated_final$Sentiment_abs[youtube_updated_final$total == i])
+  mean_sentiment <- rbind(mean_sentiment,mean)
+}
+rownames(mean_sentiment) <- c(0:9)
+plot(c(0:9),mean_sentiment,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean (abs) difference in sentiment scores')
+
+mean_readability <- c()
+for (i in 0:9) {
+  mean <- mean(youtube_updated_final$Readability_abs[youtube_updated_final$total == i],na.rm = TRUE)
+  mean_readability <- rbind(mean_readability,mean)
+}
+rownames(mean_readability) <- c(0:9)
+plot(c(0:9),mean_readability,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean (abs) difference in readability scores')
+
+mean_lexicaldiversity <- c()
+for (i in 0:9) {
+  mean <- mean(youtube_updated_final$LexicalDiversity_abs[youtube_updated_final$total == i])
+  mean_lexicaldiversity <- rbind(mean_lexicaldiversity,mean)
+}
+rownames(mean_lexicaldiversity) <- c(0:9)
+plot(c(0:9),mean_lexicaldiversity,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean (abs) difference in lexical diversity scores')
+
+## Sq diff ##
+
+mean_sentiment <- c()
+for (i in 0:9) {
+  mean <- mean(youtube_updated_final$Sentiment_sq[youtube_updated_final$total == i])
+  mean_sentiment <- rbind(mean_sentiment,mean)
+}
+rownames(mean_sentiment) <- c(0:9)
+plot(c(0:9),mean_sentiment,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean (sq) difference in sentiment scores')
+
+mean_readability <- c()
+for (i in 0:9) {
+  mean <- mean(youtube_updated_final$Readability_sq[youtube_updated_final$total == i],na.rm = TRUE)
+  mean_readability <- rbind(mean_readability,mean)
+}
+rownames(mean_readability) <- c(0:9)
+plot(c(0:9),mean_readability,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean (sq) difference in readability scores')
+
+mean_lexicaldiversity <- c()
+for (i in 0:9) {
+  mean <- mean(youtube_updated_final$LexicalDiversity_sq[youtube_updated_final$total == i])
+  mean_lexicaldiversity <- rbind(mean_lexicaldiversity,mean)
+}
+rownames(mean_lexicaldiversity) <- c(0:9)
+plot(c(0:9),mean_lexicaldiversity,xlim = range(0:9), xlab = 'No. of steps', ylab = 'Mean (sq) difference in lexical diversity scores')
